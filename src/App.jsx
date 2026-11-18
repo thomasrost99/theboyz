@@ -11,19 +11,19 @@ export default function App() {
     const t = setInterval(load, 3000);
     return () => clearInterval(t);
   }, []);
-  if (!s) return <p style={{ padding: 20 }}>Loading…</p>;
-  const btn = { fontSize: 22, width: 48, height: 48, borderRadius: 8, border: "1px solid #888" };
+  if (!s) return <div className="wrap"><h1>Loading…</h1></div>;
   return (
-    <div style={{ fontFamily: "system-ui", maxWidth: 480, margin: "20px auto", padding: "0 12px" }}>
+    <div className="wrap">
+      <h1>Progress</h1>
       {s.names.map((n, i) => (
-        <div key={i} style={{ margin: "14px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <b style={{ flex: 1 }}>{n}</b>
-            <button style={btn} onClick={() => call({ i, d: -1 }).then(setS)}>-</button>
-            <span style={{ fontSize: 24, width: 60, textAlign: "center" }}>{s.v[i]}</span>
-            <button style={btn} onClick={() => call({ i, d: 1 }).then(setS)}>+</button>
+        <div className="card" key={i}>
+          <div className="top">
+            <span className="name">{n}</span>
+            <button onClick={() => call({ i, d: -1 }).then(setS)}>-</button>
+            <span className="num">{s.v[i]}<small>/100</small></span>
+            <button className="plus" onClick={() => call({ i, d: 1 }).then(setS)}>+</button>
           </div>
-          <progress max={100} value={s.v[i]} style={{ width: "100%" }} />
+          <div className="bar"><i style={{ width: s.v[i] + "%" }} /></div>
         </div>
       ))}
     </div>
