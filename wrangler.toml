@@ -1,16 +1,7 @@
 name = "theboyz"
-main = "worker/index.js"
+pages_build_output_dir = "./dist"
 compatibility_date = "2025-01-01"
 
-[assets]
-directory = "./dist"
-binding = "ASSETS"
-run_worker_first = ["/api"]
-
-[[durable_objects.bindings]]
-name = "COUNTERS"
-class_name = "Counters"
-
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["Counters"]
+[[kv_namespaces]]
+binding = "KV"
+id = "a401a1a1d06845cfacf0a7e37383d708"
