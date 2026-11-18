@@ -13,3 +13,9 @@ button.plus{background:linear-gradient(135deg,var(--a),var(--b))}
 button:active{transform:scale(.92)}
 .bar{height:10px;border-radius:99px;background:#ffffff14;margin-top:14px;overflow:hidden}
 .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--a),var(--b));transition:width .3s}
+.card{cursor:pointer}
+.back{width:auto;height:40px;padding:0 14px;font-size:16px;border-radius:12px}
+.sub{font-size:16px;color:var(--mut);font-weight:500;margin-left:6px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.day{width:100%;height:auto;aspect-ratio:1;font-size:16px;border-radius:12px;color:var(--mut);background:#ffffff0f}
+.day.on{color:#fff;background:linear-gradient(135deg,var(--a),var(--b))}
