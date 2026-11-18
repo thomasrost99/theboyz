@@ -8,9 +8,63 @@ const sum = (a) => a.reduce((t, on, j) => t + (on ? j + 1 : 0), 0); // reps of O
 const title = (c) => [...MILES].reverse().find((m) => c >= m[0]);
 const count = (a) => a.filter(Boolean).length;
 const fmt = (n) => n.toLocaleString();
-const call = async (body) =>
-  (await fetch("/api", body ? { method: "POST", body: JSON.stringify(body) } : {})).json();
-const getMe = () => { try { const n = parseInt(localStorage.getItem("me"), 10); return n >= 0 && n < 4 ? n : null; } catch { return null; } };
+const tok = () => { try { return localStorage.getItem("tok") || ""; } catch { return ""; } };
+const authed = (body) => ({ method: "POST", headers: { authorization: "Bearer " + tok() }, body: JSON.stringify(body) });
+const lost = () => window.dispatchEvent(new Event("boyz-auth"));
+// GET, or POST as the signed-in person. Returns null (and signs out) if the server rejects the token.
+const call = async (body) => {
+  const r = await fetch("/api", body ? authed(body) : {});
+  if (r.status === 401) { lost(); return null; }
+  return r.json();
+};
+const getMe = () => { try { const n = parseInt(localStorage.getItem("me"), 10); return n >= 0 && n < 4 && tok() ? n : null; } catch { return null; } };
+
+function Login({ names, hasPin, onDone }) {
+  const [i, setI] = useState(null);
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const setup = i !== null && !hasPin[i];
+  const go = async (e) => {
+    e.preventDefault();
+    setErr("");
+    if (setup && pin !== pin2) return setErr("PINs don't match");
+    setBusy(true);
+    const r = await fetch("/auth", { method: "POST", body: JSON.stringify({ i, pin }) });
+    const d = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (r.ok) return onDone(d.me, d.token);
+    setPin(""); setPin2("");
+    setErr(r.status === 429 ? "Too many tries. Wait 15 minutes, or ask Tommy to reset your PIN." : "Wrong PIN");
+  };
+  if (i === null) return (
+    <div className="hero">
+      <div className="kicker">THE BOYZ</div>
+      <h1>WHO ARE<br />YOU?</h1>
+      <p>Pick your name.</p>
+      <div className="picker">
+        {names.map((n, k) => <button key={k} style={{ animationDelay: k * 70 + "ms" }} onClick={() => setI(k)}>{n}</button>)}
+      </div>
+    </div>
+  );
+  return (
+    <div className="hero">
+      <div className="kicker">{names[i].toUpperCase()}</div>
+      <h1>{setup ? <>CREATE<br />YOUR PIN</> : <>ENTER<br />YOUR PIN</>}</h1>
+      <p>{setup ? "Pick 4 digits and remember them. This phone will remember you." : "4 digits."}</p>
+      <form className="pinform" onSubmit={go}>
+        <input type="password" inputMode="numeric" pattern="\d{4}" maxLength={4} autoFocus autoComplete="off" placeholder="••••" value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
+        {setup && <input type="password" inputMode="numeric" pattern="\d{4}" maxLength={4} autoComplete="off" placeholder="again" value={pin2}
+          onChange={(e) => setPin2(e.target.value.replace(/\D/g, ""))} />}
+        {err && <div className="err">{err}</div>}
+        <button className="send" disabled={busy || pin.length !== 4 || (setup && pin2.length !== 4)}>{setup ? "Save PIN" : "Let me in"}</button>
+        <a onClick={() => { setI(null); setPin(""); setPin2(""); setErr(""); }}>← different name</a>
+      </form>
+    </div>
+  );
+}
 
 function Ring({ pct, size = 64 }) {
   const r = (size - 10) / 2, C = 2 * Math.PI * r;
@@ -36,7 +90,8 @@ function Board({ names, me }) {
   const post = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    const r = await fetch("/messages", { method: "POST", body: JSON.stringify({ name: names[me], text }) });
+    const r = await fetch("/messages", authed({ text }));
+    if (r.status === 401) return lost();
     setMsgs(await r.json());
     setText("");
   };
@@ -57,6 +112,27 @@ function Board({ names, me }) {
   );
 }
 
+function Admin({ names, hasPin }) {
+  const [armed, setArmed] = useState(null);
+  const [done, setDone] = useState("");
+  const reset = async (t) => {
+    if (armed !== t) return setArmed(t);
+    await fetch("/auth", authed({ action: "reset", target: t }));
+    setArmed(null); setDone(`${names[t]}'s PIN is cleared. They pick a new one next time they sign in.`);
+  };
+  return (
+    <div className="board admin">
+      <h2>Tommy's controls</h2>
+      {[1, 2, 3].map((t) => (
+        <button key={t} className="back" disabled={!hasPin[t]} onClick={() => reset(t)}>
+          {!hasPin[t] ? `${names[t]}: no PIN yet` : armed === t ? "Tap again to confirm" : `Reset ${names[t]}'s PIN`}
+        </button>
+      ))}
+      {done && <p className="hint">{done}</p>}
+    </div>
+  );
+}
+
 export default function App() {
   const [s, setS] = useState(null);
   const [toast, setToast] = useState(null);
@@ -66,7 +142,7 @@ export default function App() {
     return n >= 0 && n < 4 ? n : null;
   });
   useEffect(() => {
-    const load = () => call().then(setS).catch(() => {});
+    const load = () => call().then((d) => d && setS(d)).catch(() => {});
     load();
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
@@ -74,7 +150,9 @@ export default function App() {
   useEffect(() => { location.hash = who === null ? "" : who; window.scrollTo(0, 0); }, [who]);
   useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3200); return () => clearTimeout(t); } }, [toast]);
 
-  const pick = (i) => { try { if (i === null) localStorage.removeItem("me"); else localStorage.setItem("me", i); } catch {} setMe(i); if (i !== null) setWho(null); };
+  const signIn = (i, t) => { try { localStorage.setItem("me", i); localStorage.setItem("tok", t); } catch {} setMe(i); setWho(null); };
+  const signOut = () => { try { localStorage.removeItem("me"); localStorage.removeItem("tok"); } catch {} setMe(null); setWho(null); };
+  useEffect(() => { window.addEventListener("boyz-auth", signOut); return () => window.removeEventListener("boyz-auth", signOut); });
   const shell = (kids) => (
     <>
       <div className="blobs"><i /><i /><i /></div>
@@ -84,18 +162,7 @@ export default function App() {
   );
   if (!s) return shell(<h1 className="hero">Loading…</h1>);
 
-  if (me === null) {
-    return shell(
-      <div className="hero">
-        <div className="kicker">THE BOYZ</div>
-        <h1>WHO ARE<br />YOU?</h1>
-        <p>Pick your name. You can switch any time.</p>
-        <div className="picker">
-          {s.names.map((n, i) => <button key={i} style={{ animationDelay: i * 70 + "ms" }} onClick={() => pick(i)}>{n}</button>)}
-        </div>
-      </div>
-    );
-  }
+  if (me === null) return shell(<Login names={s.names} hasPin={s.hasPin || []} onDone={signIn} />);
 
   if (who !== null) {
     const d = s.days[who], c = count(d);
@@ -113,7 +180,7 @@ export default function App() {
         navigator.vibrate?.(hit ? [30, 40, 60] : 15);
       }
       setS({ ...s, days: s.days.map((a, k) => (k === who ? a.map((v, j) => (j === day - 1 ? on : v)) : a)) });
-      call({ i: who, day, on }).then(setS);
+      call({ day, on }).then((d) => d && setS(d));
     };
     const t = title(c), r = sum(d);
     return shell(<>
@@ -153,7 +220,7 @@ export default function App() {
       <h1>100 DAY<br />CHALLENGE</h1>
       <p>Day N = <b>N push-ups</b>, <b>N sit-ups</b>, <b>N pull-ups</b>. No days off. 💪</p>
       <div className="total"><b>{fmt(total)}</b> reps crushed together</div>
-      <div className="meline">You're <b>{s.names[me]}</b> · <a onClick={() => pick(null)}>switch</a></div>
+      <div className="meline">You're <b>{s.names[me]}</b> · <a onClick={signOut}>sign out</a></div>
     </div>
     {order.map((i, rank) => {
       const c = count(s.days[i]), t = title(c);
@@ -170,6 +237,7 @@ export default function App() {
         </div>
       );
     })}
+    {me === 0 && <Admin names={s.names} hasPin={s.hasPin || []} />}
     <Board names={s.names} me={me} />
   </>);
 }

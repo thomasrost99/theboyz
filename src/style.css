@@ -57,4 +57,9 @@ button.send{height:48px;padding:0 18px;font-size:16px;border-radius:14px;backgro
 .msg{background:#1a1f3dcc;border:1px solid #ffffff14;border-radius:16px;padding:10px 14px;margin-bottom:10px;animation:rise .4s both}
 .msg span{color:var(--mut);font-size:12px;margin-left:6px}.msg p{margin:6px 0 0;word-break:break-word}
 button.day:disabled{cursor:default}.day.ro:active{transform:none}.day.ro:not(.on){opacity:.55}
+.pinform{display:grid;gap:12px;max-width:260px;margin:22px auto 0}
+.pinform input{height:60px;border-radius:18px;border:1px solid #ffffff2a;background:#ffffff12;color:var(--txt);font-size:30px;letter-spacing:12px;text-align:center}
+.pinform .send{height:52px;font-size:18px;font-weight:700}.pinform button:disabled,.admin button:disabled{opacity:.4}
+.pinform a{color:var(--b);cursor:pointer;font-size:14px}.err{color:#ff7a90;font-size:14px}
+.admin{display:grid;gap:8px}.admin .back{text-align:left}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
