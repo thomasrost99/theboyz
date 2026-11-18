@@ -100,7 +100,9 @@ export default function App() {
   if (who !== null) {
     const d = s.days[who], c = count(d);
     const next = d.indexOf(false) + 1; // 0 when all done
+    const mine = who === me;
     const toggle = (day, ev) => {
+      if (!mine) return;
       const on = !d[day - 1];
       const nc = c + (on ? 1 : -1);
       if (on) {
@@ -133,13 +135,13 @@ export default function App() {
         : <div className="next win"><b>👑 100 DAYS. LEGEND.</b></div>}
       <div className="grid">
         {d.map((on, j) => (
-          <button key={j} className={"day" + (on ? " on" : "") + ((j + 1) % 10 === 0 ? " ten" : "") + (j + 1 === next ? " nxt" : "")}
-            title={`Day ${j + 1}: ${j + 1} of each`} onClick={(e) => toggle(j + 1, e)}>
+          <button key={j} className={"day" + (mine ? "" : " ro") + (on ? " on" : "") + ((j + 1) % 10 === 0 ? " ten" : "") + (j + 1 === next ? " nxt" : "")}
+            title={`Day ${j + 1}: ${j + 1} of each`} disabled={!mine} onClick={(e) => toggle(j + 1, e)}>
             {on ? "✓" : j + 1}
           </button>
         ))}
       </div>
-      <p className="hint">Tap a day when you've done all three. Day N = N push-ups, N sit-ups, N pull-ups.</p>
+      <p className="hint">{mine ? "Tap a day when you've done all three. Day N = N push-ups, N sit-ups, N pull-ups." : `View only. You can only check off your own days (you're ${s.names[me]}).`}</p>
     </>);
   }
 
