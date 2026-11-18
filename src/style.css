@@ -117,3 +117,13 @@ button.day:disabled{cursor:default}.day.ro:active{transform:none}.day.ro:not(.on
 .xbtn{position:absolute;right:0;top:6px;width:44px;height:44px;border-radius:50%;font-size:20px;background:#ffffff1c;color:#fff}
 .xbtn.top{position:fixed;top:max(14px,env(safe-area-inset-top));right:14px;z-index:5}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.msg{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.reacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.chip{height:32px;min-width:32px;padding:0 10px;border-radius:16px;border:1px solid #ffffff1f;background:#ffffff10;color:var(--txt);font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.chip span{margin:0;font-size:13px;color:var(--mut)}
+.chip.mine{border-color:#22d3ee;background:#22d3ee26}.chip.mine span{color:var(--txt)}
+.chip.add{color:var(--mut);font-size:13px;opacity:.8}
+.picker{display:flex;flex-wrap:wrap;gap:4px;width:100%;padding:6px;border-radius:14px;background:#0b0f26;border:1px solid #ffffff1f}
+.picker button{width:42px;height:42px;font-size:22px;border-radius:12px;border:0;background:transparent}
+.picker button.mine{background:#22d3ee26}

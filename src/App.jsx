@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { burst } from "./confetti.js";
 import Sheet from "./Sheet.jsx";
 import Stats from "./Stats.jsx";
@@ -108,10 +108,58 @@ function Lightbox({ m, reps, onClose }) {
   );
 }
 
+const EMOJI = ["👍", "❤️", "😂", "🔥", "💪", "😮", "😢", "🙏"];
+
+// Reaction chips under a message (tap a chip to add or remove yours) and a small + that opens the picker.
+// Long-pressing the message opens the same picker.
+function Reacts({ m, names, me, open, setOpen, react }) {
+  const chips = Object.entries(m.re || {}).filter(([, who]) => who.length);
+  return (
+    <div className="reacts">
+      {chips.map(([e, who]) => (
+        <button key={e} className={"chip" + (who.includes(me) ? " mine" : "")} title={who.map((i) => names[i]).join(", ")} onClick={() => react(m.id, e)}>
+          {e} <span>{who.length}</span>
+        </button>
+      ))}
+      <button className="chip add" aria-label="Add reaction" onClick={() => setOpen(open ? null : m.id)}>{open ? "✕" : "☺+"}</button>
+      {open && (
+        <div className="picker">
+          {EMOJI.map((e) => (
+            <button key={e} className={(m.re?.[e] || []).includes(me) ? "mine" : ""} onClick={() => { react(m.id, e); setOpen(null); }}>{e}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Long-press (about half a second, finger not moving) calls fn; a scroll or lift cancels it.
+function useHold(fn) {
+  const t = useRef(null);
+  const stop = () => { clearTimeout(t.current); t.current = null; };
+  return { onTouchStart: () => { stop(); t.current = setTimeout(() => { t.current = null; fn(); }, 500); }, onTouchMove: stop, onTouchEnd: stop, onTouchCancel: stop, onContextMenu: (e) => { e.preventDefault(); fn(); } };
+}
+
+function Item({ m, names, me, open, setOpen, react, children }) {
+  const hold = useHold(() => setOpen(m.id));
+  return (
+    <div className={"msg" + (m.type === "photo" ? " photo" : "")} {...hold}>
+      {children}
+      <Reacts m={m} names={names} me={me} open={open === m.id} setOpen={setOpen} react={react} />
+    </div>
+  );
+}
+
 function Board({ names, me }) {
   const [feed, setFeed] = useState([]);
   const [text, setText] = useState("");
   const [big, setBig] = useState(null);
+  const [open, setOpen] = useState(null); // id of the message whose emoji picker is showing
+  const react = async (id, emoji) => {
+    const r = await fetch("/messages", authed({ react: { id, emoji } }));
+    if (r.status === 401) return lost();
+    if (r.ok) setFeed(await r.json());
+  };
   useEffect(() => {
     const load = () => fetch("/messages").then((r) => r.json()).then(setFeed).catch(() => {});
     load();
@@ -136,17 +184,14 @@ function Board({ names, me }) {
         <input value={text} maxLength={500} placeholder={`Say something, ${names[me]}…`} onChange={(e) => setText(e.target.value)} />
         <button className="send">Post</button>
       </form>
-      {feed.map((m) => m.type === "photo" ? (
-        <div className="msg photo" key={m.id}>
+      {feed.map((m) => (
+        <Item key={m.id} m={m} names={names} me={me} open={open} setOpen={setOpen} react={react}>
           <b>{m.name}</b> <span>{when(m.ts)}</span>
-          <p className="cap">📸 Day {m.day} · {reps(m)}</p>
-          <img loading="lazy" alt={`${m.name} day ${m.day}`} src={`/photo?i=${m.i}&day=${m.day}&v=${m.ts}`} onClick={() => setBig(m)} />
-        </div>
-      ) : (
-        <div className="msg" key={m.id}>
-          <b>{m.name}</b> <span>{when(m.ts)}</span>
-          <p>{m.text}</p>
-        </div>
+          {m.type === "photo" ? (<>
+            <p className="cap">📸 Day {m.day} · {reps(m)}</p>
+            <img loading="lazy" alt={`${m.name} day ${m.day}`} src={`/photo?i=${m.i}&day=${m.day}&v=${m.ts}`} onClick={() => setBig(m)} />
+          </>) : <p>{m.text}</p>}
+        </Item>
       ))}
       {big && <Lightbox m={big} reps={reps(big)} onClose={() => setBig(null)} />}
     </div>

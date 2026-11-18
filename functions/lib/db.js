@@ -13,6 +13,7 @@ async function init(env) {
     D.prepare("CREATE TABLE IF NOT EXISTS days(i INTEGER NOT NULL, day INTEGER NOT NULL, push INTEGER, sit INTEGER, pull INTEGER, at INTEGER, photo INTEGER, PRIMARY KEY(i,day))"),
     D.prepare("CREATE TABLE IF NOT EXISTS msgs(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, text TEXT, ts INTEGER, UNIQUE(name,text,ts))"),
     D.prepare("CREATE TABLE IF NOT EXISTS auth(k TEXT PRIMARY KEY, v TEXT, exp INTEGER)"),
+    D.prepare("CREATE TABLE IF NOT EXISTS reacts(mid TEXT NOT NULL, i INTEGER NOT NULL, emoji TEXT NOT NULL, ts INTEGER, PRIMARY KEY(mid,i,emoji))"),
     D.prepare("CREATE TABLE IF NOT EXISTS photos(i INTEGER NOT NULL, day INTEGER NOT NULL, data BLOB, ts INTEGER, PRIMARY KEY(i,day))"),
   ]);
   const done = await D.prepare("SELECT v FROM auth WHERE k='migrated'").first();
