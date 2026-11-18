@@ -1,13 +1,26 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { compress } from "./img.js";
+import { useScrollLock } from "./lock.js";
 
 // Bottom sheet for one finished day: optional exact rep log, proof photo, uncheck.
-export default function Sheet({ name, who, day, log, mine, authed, onClose, onChanged, onUncheck }) {
+export default function Sheet({ name, who, day, log, mine, authed, onChanged, onUncheck }) {
+  useScrollLock();
   const [v, setV] = useState({ push: log?.push ?? "", sit: log?.sit ?? "", pull: log?.pull ?? "" });
   const [busy, setBusy] = useState("");
   const [armed, setArmed] = useState(false);
   const [bust, setBust] = useState(0); // forces the photo to reload after upload
   const [photo, setPhoto] = useState(!!log?.photo);
+
+  // Back (swipe or button) closes the sheet: it owns one history entry; App's popstate handler unmounts it.
+  useEffect(() => { history.pushState({ sheet: 1 }, ""); }, []);
+  const close = () => history.back();
+  const drag = useRef(null);
+  const [dy, setDy] = useState(0);
+  const ts = { // swipe down on the header to dismiss
+    onTouchStart: (e) => { drag.current = e.touches[0].clientY; },
+    onTouchMove: (e) => { if (drag.current !== null) setDy(Math.max(0, e.touches[0].clientY - drag.current)); },
+    onTouchEnd: () => { const far = dy > 90; drag.current = null; setDy(0); if (far) close(); },
+  };
 
   const save = async () => {
     setBusy("Saving…");
@@ -41,10 +54,13 @@ export default function Sheet({ name, who, day, log, mine, authed, onClose, onCh
     </label>
   );
   return (
-    <div className="scrim" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="grab" />
-        <h2>{name} · Day {day}</h2>
+    <div className="scrim" onClick={close}>
+      <div className="sheet" style={dy ? { transform: `translateY(${dy}px)`, transition: "none" } : undefined} onClick={(e) => e.stopPropagation()}>
+        <div className="shead" {...ts}>
+          <div className="grab" />
+          <button className="xbtn" aria-label="Close" onClick={close}>✕</button>
+          <h2>{name} · Day {day}</h2>
+        </div>
         <p className="sub">Target: {day} push-ups, {day} sit-ups, {day} pull-ups</p>
         <div className="logrow">{field("push", "Push-ups")}{field("sit", "Sit-ups")}{field("pull", "Pull-ups")}</div>
         {mine
@@ -63,11 +79,11 @@ export default function Sheet({ name, who, day, log, mine, authed, onClose, onCh
         )}
         {busy && <p className="hint">{busy}</p>}
         {mine && (
-          <button className="danger" onClick={() => (armed ? onUncheck() : setArmed(true))}>
+          <button className="danger" onClick={() => { if (!armed) return setArmed(true); onUncheck(); history.back(); }}>
             {armed ? "Tap again: uncheck day (deletes reps & photo)" : "Uncheck this day"}
           </button>
         )}
-        <button className="back close" onClick={onClose}>Close</button>
+        <button className="back close" onClick={close}>Close</button>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { burst } from "./confetti.js";
 import Sheet from "./Sheet.jsx";
 import Stats from "./Stats.jsx";
+import { useScrollLock } from "./lock.js";
 
 const MILES = [
   [10, "Warm-up", "🔥"], [25, "Quarter", "⚡"], [50, "Halfway", "🚀"], [75, "Beast mode", "🦍"], [100, "Legend", "👑"],
@@ -18,6 +19,11 @@ const call = async (body) => {
   const r = await fetch("/api", body ? authed(body) : {});
   if (r.status === 401) { lost(); return null; }
   return r.json();
+};
+const parseView = () => {
+  if (location.hash === "#stats") return "stats";
+  const n = parseInt(location.hash.slice(1), 10);
+  return n >= 0 && n < 4 ? n : null;
 };
 const getMe = () => { try { const n = parseInt(localStorage.getItem("me"), 10); return n >= 0 && n < 4 && tok() ? n : null; } catch { return null; } };
 
@@ -91,11 +97,23 @@ function Ring({ pct, size = 64 }) {
   );
 }
 
+function Lightbox({ m, reps, onClose }) {
+  useScrollLock();
+  return (
+    <div className="scrim lightbox" onClick={onClose}>
+      <button className="xbtn top" aria-label="Close" onClick={onClose}>✕</button>
+      <img alt="" src={`/photo?i=${m.i}&day=${m.day}&v=${m.ts}`} />
+      <div className="cap">{m.name} · Day {m.day} · {reps} <span>(tap to close)</span></div>
+    </div>
+  );
+}
+
 function Board({ names, me }) {
-  const [msgs, setMsgs] = useState([]);
+  const [feed, setFeed] = useState([]);
   const [text, setText] = useState("");
+  const [big, setBig] = useState(null);
   useEffect(() => {
-    const load = () => fetch("/messages").then((r) => r.json()).then(setMsgs).catch(() => {});
+    const load = () => fetch("/messages").then((r) => r.json()).then(setFeed).catch(() => {});
     load();
     const t = setInterval(load, 8000);
     return () => clearInterval(t);
@@ -105,9 +123,12 @@ function Board({ names, me }) {
     if (!text.trim()) return;
     const r = await fetch("/messages", authed({ text }));
     if (r.status === 401) return lost();
-    setMsgs(await r.json());
+    setFeed(await r.json());
     setText("");
   };
+  const when = (ts) => new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const reps = (m) => (m.push != null || m.sit != null || m.pull != null)
+    ? `${m.push ?? "–"} push · ${m.sit ?? "–"} sit · ${m.pull ?? "–"} pull` : `Day ${m.day}: ${m.day} of each`;
   return (
     <div className="board">
       <h2>Message board</h2>
@@ -115,12 +136,19 @@ function Board({ names, me }) {
         <input value={text} maxLength={500} placeholder={`Say something, ${names[me]}…`} onChange={(e) => setText(e.target.value)} />
         <button className="send">Post</button>
       </form>
-      {msgs.map((m) => (
-        <div className="msg" key={m.ts}>
-          <b>{m.name}</b> <span>{new Date(m.ts).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+      {feed.map((m) => m.type === "photo" ? (
+        <div className="msg photo" key={m.id}>
+          <b>{m.name}</b> <span>{when(m.ts)}</span>
+          <p className="cap">📸 Day {m.day} · {reps(m)}</p>
+          <img loading="lazy" alt={`${m.name} day ${m.day}`} src={`/photo?i=${m.i}&day=${m.day}&v=${m.ts}`} onClick={() => setBig(m)} />
+        </div>
+      ) : (
+        <div className="msg" key={m.id}>
+          <b>{m.name}</b> <span>{when(m.ts)}</span>
           <p>{m.text}</p>
         </div>
       ))}
+      {big && <Lightbox m={big} reps={reps(big)} onClose={() => setBig(null)} />}
     </div>
   );
 }
@@ -150,24 +178,37 @@ export default function App() {
   const [s, setS] = useState(null);
   const [toast, setToast] = useState(null);
   const [me, setMe] = useState(getMe);
-  const [stats, setStats] = useState(() => location.hash === "#stats");
   const [sheet, setSheet] = useState(null);
-  const [who, setWho] = useState(() => {
-    const n = parseInt(location.hash.slice(1), 10);
-    return n >= 0 && n < 4 ? n : null;
+  // One view: null = home, 0..3 = a person's page, "stats". History rule: home -> sub-page pushes ONE entry;
+  // sub-page -> sub-page replaces it; back (swipe or button) always lands on home. A deep link gets a home entry below it.
+  const [view, setView] = useState(() => {
+    const v = parseView();
+    if (v !== null) { history.replaceState(null, "", location.pathname); history.pushState(null, "", "#" + v); }
+    return v;
   });
+  const who = typeof view === "number" ? view : null;
+  const stats = view === "stats";
+  useEffect(() => {
+    const f = () => { setView(parseView()); setSheet(null); window.scrollTo(0, 0); };
+    window.addEventListener("popstate", f);
+    return () => window.removeEventListener("popstate", f);
+  }, []);
+  const go = (v) => {
+    if (v === null) { if (view !== null) history.back(); return; }
+    history[view === null ? "pushState" : "replaceState"](null, "", "#" + v);
+    setView(v); setSheet(null); window.scrollTo(0, 0);
+  };
   useEffect(() => {
     const load = () => call().then((d) => d && setS(d)).catch(() => {});
     load();
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
   }, []);
-  useEffect(() => { location.hash = stats ? "stats" : who === null ? "" : who; window.scrollTo(0, 0); setSheet(null); }, [who, stats]);
   const refresh = () => call().then((d) => d && setS(d));
   useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3200); return () => clearTimeout(t); } }, [toast]);
 
-  const signIn = (i, t) => { try { localStorage.setItem("me", i); localStorage.setItem("tok", t); } catch {} setMe(i); setWho(null); };
-  const signOut = () => { try { localStorage.removeItem("me"); localStorage.removeItem("tok"); } catch {} setMe(null); setWho(null); };
+  const signIn = (i, t) => { try { localStorage.setItem("me", i); localStorage.setItem("tok", t); } catch {} setMe(i); setView(null); };
+  const signOut = () => { try { localStorage.removeItem("me"); localStorage.removeItem("tok"); } catch {} setMe(null); setView(null); history.replaceState(null, "", location.pathname); };
   useEffect(() => { window.addEventListener("boyz-auth", signOut); return () => window.removeEventListener("boyz-auth", signOut); });
   const shell = (kids) => (
     <>
@@ -200,13 +241,12 @@ export default function App() {
       call({ day, on }).then((d) => d && setS(d));
     };
     const uncheck = (day) => {
-      setSheet(null);
       setS({ ...s, days: s.days.map((a, k) => (k === who ? a.map((v, j) => (j === day - 1 ? false : v)) : a)) });
       call({ day, on: false }).then((d) => d && setS(d));
     };
     const t = title(c), r = sum(d);
     return shell(<>
-      <button className="back" onClick={() => setWho(null)}>← Everyone</button>
+      <button className="back" onClick={() => go(null)}>← Everyone</button>
       <div className="phead">
         <Ring pct={c} size={96} />
         <div>
@@ -232,11 +272,11 @@ export default function App() {
       </div>
       <p className="hint">{mine ? "Tap a day when you've done all three. Tap a finished day to log exact reps or add a photo." : `View only. You can only check off your own days (you're ${s.names[me]}). Tap a finished day to see details.`}</p>
       {sheet && <Sheet key={sheet} name={s.names[who]} who={who} day={sheet} log={s.logs?.[who]?.[sheet]} mine={mine} authed={authed}
-        onClose={() => setSheet(null)} onChanged={refresh} onUncheck={() => uncheck(sheet)} />}
+        onChanged={refresh} onUncheck={() => uncheck(sheet)} />}
     </>);
   }
 
-  if (stats) return shell(<Stats s={s} me={me} onBack={() => setStats(false)} onOpen={(i) => { setStats(false); setWho(i); }} />);
+  if (stats) return shell(<Stats s={s} me={me} onBack={() => go(null)} onOpen={(i) => go(i)} />);
 
   const total = s.days.reduce((t, d) => t + 3 * sum(d), 0);
   const order = s.names.map((_, i) => i).sort((a, b) => count(s.days[b]) - count(s.days[a]));
@@ -246,13 +286,13 @@ export default function App() {
       <h1>100 DAY<br />CHALLENGE</h1>
       <p>Day N = <b>N push-ups</b>, <b>N sit-ups</b>, <b>N pull-ups</b>. No days off. 💪</p>
       <div className="total"><b>{fmt(total)}</b> reps crushed together</div>
-      <button className="statsbtn" onClick={() => setStats(true)}>📊 Stats</button>
+      <button className="statsbtn" onClick={() => go("stats")}>📊 Stats</button>
       <div className="meline">You're <b>{s.names[me]}</b> · <a onClick={signOut}>sign out</a></div>
     </div>
     {order.map((i, rank) => {
       const c = count(s.days[i]), t = title(c);
       return (
-        <div className={"card" + (i === me ? " mine" : "")} key={i} style={{ animationDelay: rank * 70 + "ms" }} onClick={() => setWho(i)}>
+        <div className={"card" + (i === me ? " mine" : "")} key={i} style={{ animationDelay: rank * 70 + "ms" }} onClick={() => go(i)}>
           <div className="top">
             <Ring pct={c} />
             <div className="who">
