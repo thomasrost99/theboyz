@@ -2,6 +2,12 @@ name = "theboyz"
 pages_build_output_dir = "./dist"
 compatibility_date = "2025-01-01"
 
+# Live data: D1 (strongly consistent). The old KV namespace is only read once, to migrate.
+[[d1_databases]]
+binding = "DB"
+database_name = "theboyz"
+database_id = "1912819a-d10d-4be1-8dc7-986697d56435"
+
 [[kv_namespaces]]
 binding = "KV"
 id = "a401a1a1d06845cfacf0a7e37383d708"

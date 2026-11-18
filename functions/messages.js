@@ -1,17 +1,16 @@
-// Message board: one KV key "msgs" = JSON array, newest first, capped at 200. Posting needs a sign-in.
+// Message board in D1, newest first, last 200. Posting needs a sign-in.
 import { NAMES, json, who } from "./lib/auth.js";
+import { db } from "./lib/db.js";
 
 export async function onRequest({ request, env }) {
-  let msgs = JSON.parse((await env.KV.get("msgs")) || "[]");
+  const D = await db(env);
   if (request.method === "POST") {
     const me = await who(request, env);
     if (me < 0) return json({ error: "auth" }, 401);
     const { text } = await request.json();
     const t = String(text || "").trim().slice(0, 500);
-    if (t) {
-      msgs = [{ name: NAMES[me], text: t, ts: Date.now() }, ...msgs].slice(0, 200);
-      await env.KV.put("msgs", JSON.stringify(msgs));
-    }
+    if (t) await D.prepare("INSERT INTO msgs(name,text,ts) VALUES(?,?,?)").bind(NAMES[me], t, Date.now()).run();
   }
-  return json(msgs);
+  const { results } = await D.prepare("SELECT name,text,ts FROM msgs ORDER BY id DESC LIMIT 200").all();
+  return json(results);
 }
