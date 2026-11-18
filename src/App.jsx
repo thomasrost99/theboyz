@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { burst } from "./confetti.js";
+import Sheet from "./Sheet.jsx";
+import Stats from "./Stats.jsx";
 
 const MILES = [
   [10, "Warm-up", "🔥"], [25, "Quarter", "⚡"], [50, "Halfway", "🚀"], [75, "Beast mode", "🦍"], [100, "Legend", "👑"],
@@ -148,6 +150,8 @@ export default function App() {
   const [s, setS] = useState(null);
   const [toast, setToast] = useState(null);
   const [me, setMe] = useState(getMe);
+  const [stats, setStats] = useState(() => location.hash === "#stats");
+  const [sheet, setSheet] = useState(null);
   const [who, setWho] = useState(() => {
     const n = parseInt(location.hash.slice(1), 10);
     return n >= 0 && n < 4 ? n : null;
@@ -158,7 +162,8 @@ export default function App() {
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
   }, []);
-  useEffect(() => { location.hash = who === null ? "" : who; window.scrollTo(0, 0); }, [who]);
+  useEffect(() => { location.hash = stats ? "stats" : who === null ? "" : who; window.scrollTo(0, 0); setSheet(null); }, [who, stats]);
+  const refresh = () => call().then((d) => d && setS(d));
   useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3200); return () => clearTimeout(t); } }, [toast]);
 
   const signIn = (i, t) => { try { localStorage.setItem("me", i); localStorage.setItem("tok", t); } catch {} setMe(i); setWho(null); };
@@ -180,8 +185,9 @@ export default function App() {
     const next = d.indexOf(false) + 1; // 0 when all done
     const mine = who === me;
     const toggle = (day, ev) => {
+      if (d[day - 1]) return setSheet(day); // a finished day opens its details
       if (!mine) return;
-      const on = !d[day - 1];
+      const on = true;
       const nc = c + (on ? 1 : -1);
       if (on) {
         const b = ev.currentTarget.getBoundingClientRect();
@@ -192,6 +198,11 @@ export default function App() {
       }
       setS({ ...s, days: s.days.map((a, k) => (k === who ? a.map((v, j) => (j === day - 1 ? on : v)) : a)) });
       call({ day, on }).then((d) => d && setS(d));
+    };
+    const uncheck = (day) => {
+      setSheet(null);
+      setS({ ...s, days: s.days.map((a, k) => (k === who ? a.map((v, j) => (j === day - 1 ? false : v)) : a)) });
+      call({ day, on: false }).then((d) => d && setS(d));
     };
     const t = title(c), r = sum(d);
     return shell(<>
@@ -213,15 +224,19 @@ export default function App() {
         : <div className="next win"><b>👑 100 DAYS. LEGEND.</b></div>}
       <div className="grid">
         {d.map((on, j) => (
-          <button key={j} className={"day" + (mine ? "" : " ro") + (on ? " on" : "") + ((j + 1) % 10 === 0 ? " ten" : "") + (j + 1 === next ? " nxt" : "")}
-            title={`Day ${j + 1}: ${j + 1} of each`} disabled={!mine} onClick={(e) => toggle(j + 1, e)}>
+          <button key={j} className={"day" + (mine ? "" : " ro") + (on ? " on" : "") + (on && (s.logs?.[who]?.[j + 1]?.photo || s.logs?.[who]?.[j + 1]?.push != null || s.logs?.[who]?.[j + 1]?.sit != null || s.logs?.[who]?.[j + 1]?.pull != null) ? " has" : "") + ((j + 1) % 10 === 0 ? " ten" : "") + (j + 1 === next ? " nxt" : "")}
+            title={`Day ${j + 1}: ${j + 1} of each`} disabled={!mine && !on} onClick={(e) => toggle(j + 1, e)}>
             {on ? "✓" : j + 1}
           </button>
         ))}
       </div>
-      <p className="hint">{mine ? "Tap a day when you've done all three. Day N = N push-ups, N sit-ups, N pull-ups." : `View only. You can only check off your own days (you're ${s.names[me]}).`}</p>
+      <p className="hint">{mine ? "Tap a day when you've done all three. Tap a finished day to log exact reps or add a photo." : `View only. You can only check off your own days (you're ${s.names[me]}). Tap a finished day to see details.`}</p>
+      {sheet && <Sheet key={sheet} name={s.names[who]} who={who} day={sheet} log={s.logs?.[who]?.[sheet]} mine={mine} authed={authed}
+        onClose={() => setSheet(null)} onChanged={refresh} onUncheck={() => uncheck(sheet)} />}
     </>);
   }
+
+  if (stats) return shell(<Stats s={s} me={me} onBack={() => setStats(false)} onOpen={(i) => { setStats(false); setWho(i); }} />);
 
   const total = s.days.reduce((t, d) => t + 3 * sum(d), 0);
   const order = s.names.map((_, i) => i).sort((a, b) => count(s.days[b]) - count(s.days[a]));
@@ -231,6 +246,7 @@ export default function App() {
       <h1>100 DAY<br />CHALLENGE</h1>
       <p>Day N = <b>N push-ups</b>, <b>N sit-ups</b>, <b>N pull-ups</b>. No days off. 💪</p>
       <div className="total"><b>{fmt(total)}</b> reps crushed together</div>
+      <button className="statsbtn" onClick={() => setStats(true)}>📊 Stats</button>
       <div className="meline">You're <b>{s.names[me]}</b> · <a onClick={signOut}>sign out</a></div>
     </div>
     {order.map((i, rank) => {
