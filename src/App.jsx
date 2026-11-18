@@ -162,7 +162,7 @@ export default function App() {
           <div className="top">
             <Ring pct={c} />
             <div className="who">
-              <span className="name">{rank === 0 && c > 0 ? "👑 " : ""}{s.names[i]}{i === me && <span className="you">YOU</span>}</span>
+              <span className="name">{c > 0 ? ["👑 ", "🥈 ", "🥉 "][s.days.filter((d) => count(d) > c).length] || "" : ""}{s.names[i]}{i === me && <span className="you">YOU</span>}</span>
               <span className="mini">{t ? `${t[2]} ${t[1]} · ` : ""}{fmt(3 * sum(s.days[i]))} reps</span>
             </div>
             <span className="num">{c}<small>/100</small></span>
