@@ -1,4 +1,4 @@
-const NAMES = ["Person 1", "Person 2", "Person 3", "Person 4"];
+const NAMES = ["Tommy", "Hayden", "Rob", "Jack"];
 
 export class Counters {
   constructor(state) { this.state = state; }
