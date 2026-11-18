@@ -22,21 +22,31 @@ const getMe = () => { try { const n = parseInt(localStorage.getItem("me"), 10); 
 function Login({ names, hasPin, onDone }) {
   const [i, setI] = useState(null);
   const [pin, setPin] = useState("");
-  const [pin2, setPin2] = useState("");
+  const [first, setFirst] = useState(""); // setup: the PIN typed on step 1
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const setup = i !== null && !hasPin[i];
-  const go = async (e) => {
-    e.preventDefault();
-    setErr("");
-    if (setup && pin !== pin2) return setErr("PINs don't match");
+  const reset = () => { setPin(""); setFirst(""); };
+  const submit = async (code) => {
     setBusy(true);
-    const r = await fetch("/auth", { method: "POST", body: JSON.stringify({ i, pin }) });
+    const r = await fetch("/auth", { method: "POST", body: JSON.stringify({ i, pin: code }) });
     const d = await r.json().catch(() => ({}));
     setBusy(false);
     if (r.ok) return onDone(d.me, d.token);
-    setPin(""); setPin2("");
-    setErr(r.status === 429 ? "Too many tries. Wait 15 minutes, or ask Tommy to reset your PIN." : "Wrong PIN");
+    reset();
+    setErr(r.status === 429 ? "Too many tries. Wait 15 minutes, or ask Tommy to reset your PIN." : "Wrong PIN, try again");
+  };
+  const press = (k) => {
+    if (busy) return;
+    setErr("");
+    if (k === "<") return setPin((x) => x.slice(0, -1));
+    const n = pin + k;
+    setPin(n);
+    if (n.length < 4) return;
+    if (!setup) return setTimeout(() => submit(n), 120);
+    if (!first) return setTimeout(() => { setFirst(n); setPin(""); }, 150);
+    if (n === first) return setTimeout(() => submit(n), 120);
+    setTimeout(() => { reset(); setErr("Those didn't match. Start again."); }, 200);
   };
   if (i === null) return (
     <div className="hero">
@@ -48,20 +58,21 @@ function Login({ names, hasPin, onDone }) {
       </div>
     </div>
   );
+  const msg = !setup ? "Enter your PIN" : first ? "Type it again to confirm" : "Pick a 4-digit PIN";
   return (
-    <div className="hero">
+    <div className="hero pinpage">
       <div className="kicker">{names[i].toUpperCase()}</div>
-      <h1>{setup ? <>CREATE<br />YOUR PIN</> : <>ENTER<br />YOUR PIN</>}</h1>
-      <p>{setup ? "Pick 4 digits and remember them. This phone will remember you." : "4 digits."}</p>
-      <form className="pinform" onSubmit={go}>
-        <input type="password" inputMode="numeric" pattern="\d{4}" maxLength={4} autoFocus autoComplete="off" placeholder="••••" value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
-        {setup && <input type="password" inputMode="numeric" pattern="\d{4}" maxLength={4} autoComplete="off" placeholder="again" value={pin2}
-          onChange={(e) => setPin2(e.target.value.replace(/\D/g, ""))} />}
-        {err && <div className="err">{err}</div>}
-        <button className="send" disabled={busy || pin.length !== 4 || (setup && pin2.length !== 4)}>{setup ? "Save PIN" : "Let me in"}</button>
-        <a onClick={() => { setI(null); setPin(""); setPin2(""); setErr(""); }}>← different name</a>
-      </form>
+      <h2 className="pintitle">{msg}</h2>
+      {setup && !first && <p className="pinnote">Remember it. This phone will remember you.</p>}
+      <div className={"dots" + (err ? " bad" : "")}>{[0, 1, 2, 3].map((d) => <i key={d} className={d < pin.length ? "on" : ""} />)}</div>
+      <div className="err">{err || " "}</div>
+      <div className="keypad">
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => <button key={k} onClick={() => press(k)}>{k}</button>)}
+        <span />
+        <button onClick={() => press("0")}>0</button>
+        <button className="del" onClick={() => press("<")}>⌫</button>
+      </div>
+      <a className="swap" onClick={() => { setI(null); reset(); setErr(""); }}>← different name</a>
     </div>
   );
 }
