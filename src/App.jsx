@@ -2,6 +2,44 @@ import { useEffect, useState } from "react";
 
 const call = async (body) =>
   (await fetch("/api", body ? { method: "POST", body: JSON.stringify(body) } : {})).json();
+function Board({ names }) {
+  const [msgs, setMsgs] = useState([]);
+  const [name, setName] = useState(() => localStorage.getItem("who") || names[0]);
+  const [text, setText] = useState("");
+  useEffect(() => {
+    const load = () => fetch("/messages").then((r) => r.json()).then(setMsgs).catch(() => {});
+    load();
+    const t = setInterval(load, 8000);
+    return () => clearInterval(t);
+  }, []);
+  const post = async (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    localStorage.setItem("who", name);
+    const r = await fetch("/messages", { method: "POST", body: JSON.stringify({ name, text }) });
+    setMsgs(await r.json());
+    setText("");
+  };
+  return (
+    <div className="board">
+      <h2>Message board</h2>
+      <form onSubmit={post}>
+        <select value={name} onChange={(e) => setName(e.target.value)}>
+          {names.map((n) => <option key={n}>{n}</option>)}
+        </select>
+        <input value={text} maxLength={500} placeholder="Say something…" onChange={(e) => setText(e.target.value)} />
+        <button className="plus send">Post</button>
+      </form>
+      {msgs.map((m) => (
+        <div className="msg" key={m.ts}>
+          <b>{m.name}</b> <span>{new Date(m.ts).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+          <p>{m.text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const count = (a) => a.filter(Boolean).length;
 
 export default function App() {
@@ -56,6 +94,7 @@ export default function App() {
           </div>
         );
       })}
+      <Board names={s.names} />
     </div>
   );
 }
