@@ -29,18 +29,22 @@ export default function Sheet({ name, who, day, log, mine, authed, onChanged, on
     onChanged();
   };
   const upload = async (e) => {
-    const f = e.target.files?.[0];
+    const input = e.target;
+    const f = input.files?.[0];
     if (!f) return;
     setBusy("Shrinking photo…");
     try {
       const blob = await compress(f);
       setBusy("Uploading…");
       const r = await fetch("/photo?day=" + day, { method: "POST", headers: authed({}).headers, body: blob });
-      if (r.ok) { setPhoto(true); setBust(Date.now()); onChanged(); }
-      else setBusy("Upload failed, try again");
-      if (r.ok) setBusy("");
-    } catch { setBusy("That photo didn't work, try another"); }
-    e.target.value = "";
+      if (r.ok) { setPhoto(true); setBust(Date.now()); onChanged(); setBusy(""); }
+      else if (r.status === 401) setBusy("Signed out, sign in again and retry");
+      else if (r.status === 413) setBusy("Photo too big, try another");
+      else setBusy("Upload failed (" + r.status + "), try again");
+    } catch (err) {
+      setBusy(err instanceof TypeError && /fetch|network/i.test(err.message) ? "No connection, try again" : err.message || "That photo didn't work, try another");
+    }
+    input.value = "";
   };
   const removePhoto = async () => {
     await fetch("/photo?day=" + day, { method: "DELETE", headers: authed({}).headers });
@@ -72,7 +76,7 @@ export default function Sheet({ name, who, day, log, mine, authed, onChanged, on
           <div className="row2">
             <label className="filebtn">
               📸 {photo ? "Replace photo" : "Add proof photo"}
-              <input type="file" accept="image/*" capture="environment" onChange={upload} hidden />
+              <input type="file" accept="image/*" onChange={upload} hidden />
             </label>
             {photo && <button className="back" onClick={removePhoto}>Remove</button>}
           </div>

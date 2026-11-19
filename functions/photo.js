@@ -21,6 +21,8 @@ export async function onRequest({ request, env }) {
   }
   const buf = await request.arrayBuffer();
   if (buf.byteLength > 1000000 || buf.byteLength < 100) return json({ error: "size" }, 413);
+  const m = new Uint8Array(buf, 0, 3);
+  if (m[0] !== 0xff || m[1] !== 0xd8) return json({ error: "type" }, 415); // client always sends JPEG
   await D.batch([
     D.prepare("INSERT OR IGNORE INTO days(i,day,at) VALUES(?,?,?)").bind(me, day, Date.now()),
     D.prepare("INSERT OR REPLACE INTO photos(i,day,data,ts) VALUES(?,?,?,?)").bind(me, day, [...new Uint8Array(buf)], Date.now()),
