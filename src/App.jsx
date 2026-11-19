@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { burst } from "./confetti.js";
 import Sheet from "./Sheet.jsx";
 import Stats from "./Stats.jsx";
+import Graph from "./Graph.jsx";
 import { useScrollLock } from "./lock.js";
 
 const MILES = [
@@ -307,6 +308,7 @@ export default function App() {
       {next > 0
         ? <div className="next"><small>Up next</small><b>Day {next}</b><span>{next} push-ups · {next} sit-ups · {next} pull-ups</span></div>
         : <div className="next win"><b>👑 100 DAYS. LEGEND.</b></div>}
+      <Graph days={d} />
       <div className="grid">
         {d.map((on, j) => (
           <button key={j} className={"day" + (mine ? "" : " ro") + (on ? " on" : "") + (on && (s.logs?.[who]?.[j + 1]?.photo || s.logs?.[who]?.[j + 1]?.push != null || s.logs?.[who]?.[j + 1]?.sit != null || s.logs?.[who]?.[j + 1]?.pull != null) ? " has" : "") + ((j + 1) % 10 === 0 ? " ten" : "") + (j + 1 === next ? " nxt" : "")}
