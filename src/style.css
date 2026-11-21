@@ -136,3 +136,11 @@ button.day:disabled{cursor:default}.day.ro:active{transform:none}.day.ro:not(.on
 .glegend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--mut);margin-top:4px}
 .glegend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .graph .note{padding:0 8px;text-align:center}
+
+/* automatic "finished Day N" posts: lighter, tinted with the person's colour */
+.msg.done{border-left:3px solid var(--pc);background:#1a1f3dcc;background:linear-gradient(90deg,color-mix(in srgb,var(--pc) 14%,#1a1f3d) ,#1a1f3dcc 70%);padding:8px 12px}
+.msg.done .dline{display:flex;gap:10px;align-items:center}.dtxt{min-width:0;flex:1}
+.msg.done .av{flex:none;width:32px;height:32px;border-radius:50%;background:var(--pc);color:#0f1226;font-style:normal;font-weight:800;display:flex;align-items:center;justify-content:center}
+.msg.done p{margin:2px 0 0;font-size:13px;color:var(--mut)}
+.msg.done .mile{margin:6px 0 0 42px;font-weight:700;font-size:14px;color:#ffd34d}
+.msg.done .dtxt span{white-space:nowrap}

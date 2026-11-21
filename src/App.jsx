@@ -8,6 +8,7 @@ import { useScrollLock } from "./lock.js";
 const MILES = [
   [10, "Warm-up", "🔥"], [25, "Quarter", "⚡"], [50, "Halfway", "🚀"], [75, "Beast mode", "🦍"], [100, "Legend", "👑"],
 ];
+const COLORS = ["#7c5cff", "#22d3ee", "#ffd34d", "#ff5c8a"]; // one colour per person (same as Stats)
 const sum = (a) => a.reduce((t, on, j) => t + (on ? j + 1 : 0), 0); // reps of ONE exercise
 const title = (c) => [...MILES].reverse().find((m) => c >= m[0]);
 const count = (a) => a.filter(Boolean).length;
@@ -144,7 +145,7 @@ function useHold(fn) {
 function Item({ m, names, me, open, setOpen, react, children }) {
   const hold = useHold(() => setOpen(m.id));
   return (
-    <div className={"msg" + (m.type === "photo" ? " photo" : "")} {...hold}>
+    <div className={"msg" + (m.type === "photo" ? " photo" : "") + (m.type === "done" ? " done" : "")} style={m.type === "done" ? { "--pc": COLORS[m.i] } : undefined} {...hold}>
       {children}
       <Reacts m={m} names={names} me={me} open={open === m.id} setOpen={setOpen} react={react} />
     </div>
@@ -187,7 +188,19 @@ function Board({ names, me }) {
       </form>
       {feed.map((m) => (
         <Item key={m.id} m={m} names={names} me={me} open={open} setOpen={setOpen} react={react}>
-          <b>{m.name}</b> <span>{when(m.ts)}</span>
+          {m.type === "done" ? (() => {
+            const hit = MILES.find((x) => x[0] === m.n), left = 100 - m.n;
+            return (<>
+              <div className="dline">
+                <i className="av">{m.name[0]}</i>
+                <div className="dtxt">
+                  <div><b>{m.name}</b> finished Day {m.day} ✅ <span>{when(m.ts)}</span></div>
+                  <p>{fmt(m.reps)} reps of each so far · {left > 0 ? `${left} to go` : "all 100 done"}</p>
+                </div>
+              </div>
+              {hit && <div className="mile">{hit[2]} {hit[1]}! {m.n} days done</div>}
+            </>);
+          })() : <><b>{m.name}</b> <span>{when(m.ts)}</span></>}
           {m.type === "photo" ? (<>
             <p className="cap">📸 Day {m.day} · {reps(m)}</p>
             <img loading="lazy" alt={`${m.name} day ${m.day}`} src={`/photo?i=${m.i}&day=${m.day}&v=${m.ts}`} onClick={() => setBig(m)} />
