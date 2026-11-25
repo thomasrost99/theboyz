@@ -3,6 +3,7 @@ import { burst } from "./confetti.js";
 import Sheet from "./Sheet.jsx";
 import Stats from "./Stats.jsx";
 import Graph from "./Graph.jsx";
+import PhotoPrompt, { seen, markSeen } from "./PhotoPrompt.jsx";
 import { useScrollLock } from "./lock.js";
 
 const MILES = [
@@ -238,6 +239,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [me, setMe] = useState(getMe);
   const [sheet, setSheet] = useState(null);
+  const [pp, setPp] = useState(null); // day whose "add a photo?" card is showing (only right after you check it off)
   // One view: null = home, 0..3 = a person's page, "stats". History rule: home -> sub-page pushes ONE entry;
   // sub-page -> sub-page replaces it; back (swipe or button) always lands on home. A deep link gets a home entry below it.
   const [view, setView] = useState(() => {
@@ -248,11 +250,13 @@ export default function App() {
   const who = typeof view === "number" ? view : null;
   const stats = view === "stats";
   useEffect(() => {
-    const f = () => { setView(parseView()); setSheet(null); window.scrollTo(0, 0); };
+    const f = () => { setView(parseView()); setSheet(null); setPp((d) => { if (d) markSeen(getMe(), d); return null; }); window.scrollTo(0, 0); };
     window.addEventListener("popstate", f);
     return () => window.removeEventListener("popstate", f);
   }, []);
+  const closePp = () => { setPp(null); };
   const go = (v) => {
+    if (pp) { markSeen(me, pp); setPp(null); }
     if (v === null) { if (view !== null) history.back(); return; }
     history[view === null ? "pushState" : "replaceState"](null, "", "#" + v);
     setView(v); setSheet(null); window.scrollTo(0, 0);
@@ -263,6 +267,9 @@ export default function App() {
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => { // drop the card if that day got unchecked or you opened its sheet
+    if (pp && s && me !== null && (!s.days[me][pp - 1] || sheet)) { markSeen(me, pp); setPp(null); }
+  }, [pp, s, me, sheet]);
   const refresh = () => call().then((d) => d && setS(d));
   useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3200); return () => clearTimeout(t); } }, [toast]);
 
@@ -298,6 +305,7 @@ export default function App() {
       }
       setS({ ...s, days: s.days.map((a, k) => (k === who ? a.map((v, j) => (j === day - 1 ? on : v)) : a)) });
       call({ day, on }).then((d) => d && setS(d));
+      if (!seen(me, day)) setPp(day); // suggest a photo, only for a day you just checked off yourself
     };
     const uncheck = (day) => {
       setS({ ...s, days: s.days.map((a, k) => (k === who ? a.map((v, j) => (j === day - 1 ? false : v)) : a)) });
@@ -333,6 +341,7 @@ export default function App() {
       <p className="hint">{mine ? "Tap a day when you've done all three. Tap a finished day to log exact reps or add a photo." : `View only. You can only check off your own days (you're ${s.names[me]}). Tap a finished day to see details.`}</p>
       {sheet && <Sheet key={sheet} name={s.names[who]} who={who} day={sheet} log={s.logs?.[who]?.[sheet]} mine={mine} authed={authed}
         onChanged={refresh} onUncheck={() => uncheck(sheet)} />}
+      {pp && mine && <PhotoPrompt key={pp} me={me} day={pp} authed={authed} onChanged={refresh} onClose={closePp} />}
     </>);
   }
 

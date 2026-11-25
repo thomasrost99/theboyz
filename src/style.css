@@ -144,3 +144,11 @@ button.day:disabled{cursor:default}.day.ro:active{transform:none}.day.ro:not(.on
 .msg.done p{margin:2px 0 0;font-size:13px;color:var(--mut)}
 .msg.done .mile{margin:6px 0 0 42px;font-weight:700;font-size:14px;color:#ffd34d}
 .msg.done .dtxt span{white-space:nowrap}
+
+/* "Add a photo?" card after checking off a day: bottom card, no scrim, never blocks the grid */
+.ppcard{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:80;width:calc(100% - 24px);max-width:496px;box-sizing:border-box;padding:14px 16px 10px;border-radius:22px;background:#161a36;border:1px solid #ffffff26;box-shadow:0 12px 40px #000a;animation:up .35s cubic-bezier(.2,.9,.3,1);text-align:center}
+.pptxt b{display:block;font-size:18px}.pptxt span{display:block;color:var(--mut);font-size:14px;margin:2px 0 10px}
+.ppbig{height:56px;font-size:18px;background:linear-gradient(135deg,var(--a),var(--b));border:0;color:#fff}.ppbig.off{opacity:.6}
+.ppnot{margin-top:4px;height:44px;padding:0 22px;background:none;color:var(--mut);font-size:15px}
+.pphint{margin:8px 0 0;font-size:13px;color:var(--mut)}.pphint.bad{color:#ff8fa8}
+.ppdone{font-weight:700;font-size:17px;padding:10px 0}
