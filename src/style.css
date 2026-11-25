@@ -124,9 +124,9 @@ button.day:disabled{cursor:default}.day.ro:active{transform:none}.day.ro:not(.on
 .chip span{margin:0;font-size:13px;color:var(--mut)}
 .chip.mine{border-color:#22d3ee;background:#22d3ee26}.chip.mine span{color:var(--txt)}
 .chip.add{color:var(--mut);font-size:13px;opacity:.8}
-.picker{display:flex;flex-wrap:wrap;gap:4px;width:100%;padding:6px;border-radius:14px;background:#0b0f26;border:1px solid #ffffff1f}
-.picker button{width:42px;height:42px;font-size:22px;border-radius:12px;border:0;background:transparent}
-.picker button.mine{background:#22d3ee26}
+.epicker{display:flex;flex-wrap:wrap;gap:4px;width:100%;padding:6px;border-radius:14px;background:#0b0f26;border:1px solid #ffffff1f}
+.epicker button{width:42px;height:42px;font-size:22px;border-radius:12px;border:0;background:transparent}
+.epicker button.mine{background:#22d3ee26}
 
 .graph{background:#0d1118;border:1px solid #ffffff18;border-radius:20px;padding:12px 8px 12px;margin:0 0 14px}
 .graph h3{margin:0 0 6px 8px;font-size:17px}

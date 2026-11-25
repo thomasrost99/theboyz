@@ -128,7 +128,7 @@ function Reacts({ m, names, me, open, setOpen, react }) {
       ))}
       <button className="chip add" aria-label="Add reaction" onClick={() => setOpen(open ? null : m.id)}>{open ? "✕" : "☺+"}</button>
       {open && (
-        <div className="picker">
+        <div className="epicker">
           {EMOJI.map((e) => (
             <button key={e} className={(m.re?.[e] || []).includes(me) ? "mine" : ""} onClick={() => { react(m.id, e); setOpen(null); }}>{e}</button>
           ))}
