@@ -4,6 +4,14 @@ import { CONFIRM_STEPS, STEPS } from "./jackchain.js";
 import { buildMessage, pickRoast, shareMessage, ROB_LINES } from "./share.js";
 
 const COLORS = ["#7c5cff", "#22d3ee", "#ffd34d", "#ff5c8a"];
+// Round photo avatar (Jack only); falls back to the name's initial if the image fails to load.
+function Avatar({ src, name }) {
+  const [bad, setBad] = useState(false);
+  return bad
+    ? <i className="bav">{name[0]}</i>
+    : <img className="bav" src={src} alt="" width="40" height="40" onError={() => setBad(true)} />;
+}
+
 const PLAYERS = [0, 1, 3]; // Tommy, Hayden, Jack. Rob (2) has no counter.
 const midnight = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
 
@@ -99,7 +107,7 @@ export default function Beer({ names, me, authed, lost, onBack }) {
         const mine = i === me;
         return (
           <div key={i} className={"beercard" + (mine ? " mine" : "")} style={{ "--pc": COLORS[i] }}>
-            <div className="bname">{names[i]}{mine && <span className="you">YOU</span>}</div>
+            <div className="bname">{i === 3 && <Avatar src="/avatars/jack.jpg" name={names[i]} />}{names[i]}{mine && <span className="you">YOU</span>}</div>
             <div className="bnums">
               <div className="bbig"><b key={bump[i] || 0} className="bpop">{d.total[i]}</b><span>total</span></div>
               <div className="bbig small"><b>{d.today[i]}</b><span>today</span></div>

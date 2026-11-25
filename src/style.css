@@ -159,7 +159,8 @@ button.day:disabled{cursor:default}.day.ro:active{transform:none}.day.ro:not(.on
 .beerhero{margin-top:14px}.beerhero h1{font-size:38px}
 .beercard{background:#1a1f3dcc;backdrop-filter:blur(8px);border:1px solid #ffffff18;border-left:6px solid var(--pc);border-radius:22px;padding:14px 16px;margin-bottom:12px;box-shadow:0 8px 24px #0006}
 .beercard.mine{border-color:#ffd34d88;border-left-color:var(--pc)}
-.bname{font-size:20px;font-weight:800}
+.bname{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px}
+.bav{flex:none;width:40px;height:40px;border-radius:50%;border:3px solid var(--pc);box-sizing:border-box;object-fit:cover;background:var(--pc);color:#0f1226;font-style:normal;font-weight:800;display:flex;align-items:center;justify-content:center}
 .bnums{display:flex;align-items:flex-end;gap:22px;margin:6px 0 4px}
 .bbig{display:flex;flex-direction:column}.bbig b{font-size:52px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums;color:var(--pc)}
 .bbig.small b{font-size:30px;color:var(--txt)}.bbig span{color:var(--mut);font-size:12px;letter-spacing:1px;text-transform:uppercase}
