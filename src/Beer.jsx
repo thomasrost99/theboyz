@@ -1,9 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { INSULTS } from "./insults.js";
+import { CONFIRM_STEPS, STEPS } from "./jackchain.js";
 
 const COLORS = ["#7c5cff", "#22d3ee", "#ffd34d", "#ff5c8a"];
 const PLAYERS = [0, 1, 3]; // Tommy, Hayden, Jack. Rob (2) has no counter.
 const midnight = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+
+// One popup of Jack's confirmation chain. Layout/position change every step; cancelling restarts the chain next time.
+// Taps in the first 400 ms are ignored so he can't just mash the same spot.
+const LAYOUTS = ["bl", "br", "bc", "tl", "tr", "bc2"];
+function Confirm({ step, total, onYes, onNo }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(false); const t = setTimeout(() => setReady(true), 400); return () => clearTimeout(t); }, [step]);
+  const s = STEPS[step % STEPS.length];
+  const lay = LAYOUTS[(step * 5 + 2) % LAYOUTS.length];
+  return (
+    <div className="scrim cfscrim" role="dialog" aria-modal="true">
+      <div className="cfbox" key={step}>
+        <div className="cfn">{step + 1} of {total}</div>
+        <div className="cfe">{s.e}</div>
+        <h2>{s.t}</h2>
+        <p>{s.m}</p>
+        <div className={"cfbtns " + lay + (step % 3 === 1 ? " flip" : "")}>
+          <button className={"cfyes v" + (step % 4)} disabled={!ready} onClick={onYes}>{s.ok}</button>
+          <button className="cfno" onClick={onNo}>{s.no}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Beer tab. Everyone sees everyone's counts; only the signed-in person's own card has the + and undo.
 // Only Jack (3), when he adds his own beer, gets a random insult popup (never the same one twice in a row).
@@ -11,11 +36,15 @@ export default function Beer({ names, me, authed, lost, onBack }) {
   const [d, setD] = useState(null);
   const [bump, setBump] = useState({}); // person -> counter for re-triggering the pop animation
   const [insult, setInsult] = useState(null);
+  const [chain, setChain] = useState(-1); // Jack's confirmation step, -1 = not running
   const last = useRef(-1);
   const busy = useRef(0);
   const load = () => fetch("/beer?since=" + midnight()).then((r) => r.json()).then((x) => { if (!busy.current) setD(x); }).catch(() => {});
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
   useEffect(() => { if (insult) { const t = setTimeout(() => setInsult(null), 4500); return () => clearTimeout(t); } }, [insult]);
+
+  const tapPlus = () => { if (me === 3 && CONFIRM_STEPS > 0) setChain(0); else act("add"); };
+  const yes = () => { if (chain + 1 >= CONFIRM_STEPS) { setChain(-1); act("add"); } else setChain(chain + 1); };
 
   const act = async (action) => {
     if (!d) return;
@@ -61,7 +90,7 @@ export default function Beer({ names, me, authed, lost, onBack }) {
             </div>
             {mine && (
               <div className="bbtns">
-                <button className="bplus" aria-label="Add a beer" onClick={() => act("add")}>+</button>
+                <button className="bplus" aria-label="Add a beer" onClick={tapPlus}>+</button>
                 <button className="bminus" aria-label="Undo last beer" disabled={!d.total[i]} onClick={() => act("undo")}>− undo</button>
               </div>
             )}
@@ -70,6 +99,7 @@ export default function Beer({ names, me, authed, lost, onBack }) {
       })}
       {!canPlay && <p className="hint">View only. {names[me]} isn't on the beer tracker, but you can watch the others.</p>}
       {canPlay && <p className="hint">Only you can change your own count. "Today" resets at midnight on your phone.</p>}
+      {chain >= 0 && <Confirm step={chain} total={CONFIRM_STEPS} onYes={yes} onNo={() => setChain(-1)} />}
       {insult && <div className="insult" key={insult.n} onClick={() => setInsult(null)}>🍺 {insult.text}</div>}
     </>
   );
