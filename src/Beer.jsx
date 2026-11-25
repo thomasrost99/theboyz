@@ -4,7 +4,7 @@ import { CONFIRM_STEPS, STEPS } from "./jackchain.js";
 import { buildMessage, pickRoast, shareMessage, ROB_LINES } from "./share.js";
 
 const COLORS = ["#7c5cff", "#22d3ee", "#ffd34d", "#ff5c8a"];
-// Round photo avatar (Jack and Hayden); falls back to the name's initial if the image fails to load.
+// Round photo avatar (Tommy, Hayden, Jack); falls back to the name's initial if the image fails to load.
 function Avatar({ src, name }) {
   const [bad, setBad] = useState(false);
   return bad
@@ -12,7 +12,7 @@ function Avatar({ src, name }) {
     : <img className="bav" src={src} alt="" width="512" height="512" onError={() => setBad(true)} />;
 }
 
-const AVATARS = { 1: "/avatars/hayden.jpg", 3: "/avatars/jack.jpg" }; // by player index; Tommy has none yet
+const AVATARS = { 0: "/avatars/tommy.jpg", 1: "/avatars/hayden.jpg", 3: "/avatars/jack.jpg" }; // by player index
 const PLAYERS = [0, 1, 3]; // Tommy, Hayden, Jack. Rob (2) has no counter.
 const midnight = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
 
