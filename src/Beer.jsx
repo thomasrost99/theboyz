@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { INSULTS } from "./insults.js";
 import { CONFIRM_STEPS, STEPS } from "./jackchain.js";
+import { buildMessage, pickRoast, shareMessage, ROB_LINES } from "./share.js";
 
 const COLORS = ["#7c5cff", "#22d3ee", "#ffd34d", "#ff5c8a"];
 const PLAYERS = [0, 1, 3]; // Tommy, Hayden, Jack. Rob (2) has no counter.
@@ -38,10 +39,24 @@ export default function Beer({ names, me, authed, lost, onBack }) {
   const [insult, setInsult] = useState(null);
   const [chain, setChain] = useState(-1); // Jack's confirmation step, -1 = not running
   const last = useRef(-1);
+  const [note, setNote] = useState(null); // share feedback toast
   const busy = useRef(0);
   const load = () => fetch("/beer?since=" + midnight()).then((r) => r.json()).then((x) => { if (!busy.current) setD(x); }).catch(() => {});
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
   useEffect(() => { if (insult) { const t = setTimeout(() => setInsult(null), 4500); return () => clearTimeout(t); } }, [insult]);
+
+  useEffect(() => { if (note) { const t = setTimeout(() => setNote(null), 3200); return () => clearTimeout(t); } }, [note]);
+
+  // Share: read-only, never touches the counts. The roast rotates and avoids the one used last on this phone.
+  const share = async () => {
+    if (!d) return;
+    let prev = -1; try { prev = parseInt(localStorage.getItem("roast"), 10); if (isNaN(prev)) prev = -1; } catch {}
+    const k = pickRoast(prev);
+    try { localStorage.setItem("roast", String(k)); } catch {}
+    const r = await shareMessage(buildMessage({ names, d, me, players: PLAYERS, roast: ROB_LINES[k] }));
+    if (r === "copied") setNote("Copied! Paste it in a text");
+    else if (r === "failed") setNote("Couldn't share on this device");
+  };
 
   const tapPlus = () => { if (me === 3 && CONFIRM_STEPS > 0) setChain(0); else act("add"); };
   const yes = () => { if (chain + 1 >= CONFIRM_STEPS) { setChain(-1); act("add"); } else setChain(chain + 1); };
@@ -79,6 +94,7 @@ export default function Beer({ names, me, authed, lost, onBack }) {
         <h1>BEER<br />TRACKER</h1>
         <div className="beermoji">🍺</div>
       </div>
+      {d && <button className="sharetop" onClick={share}>📤 Share the standings</button>}
       {!d ? <p className="hint">Loading…</p> : PLAYERS.map((i) => {
         const mine = i === me;
         return (
@@ -94,12 +110,14 @@ export default function Beer({ names, me, authed, lost, onBack }) {
                 <button className="bminus" aria-label="Undo last beer" disabled={!d.total[i]} onClick={() => act("undo")}>− undo</button>
               </div>
             )}
+            {mine && <button className="bshare" onClick={share}>📤 Share my count</button>}
           </div>
         );
       })}
       {!canPlay && <p className="hint">View only. {names[me]} isn't on the beer tracker, but you can watch the others.</p>}
       {canPlay && <p className="hint">Only you can change your own count. "Today" resets at midnight on your phone.</p>}
       {chain >= 0 && <Confirm step={chain} total={CONFIRM_STEPS} onYes={yes} onNo={() => setChain(-1)} />}
+      {note && <div className="toast" key={note}>{note}</div>}
       {insult && <div className="insult" key={insult.n} onClick={() => setInsult(null)}>🍺 {insult.text}</div>}
     </>
   );
