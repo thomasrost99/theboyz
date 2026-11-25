@@ -3,6 +3,7 @@ import { burst } from "./confetti.js";
 import Sheet from "./Sheet.jsx";
 import Stats from "./Stats.jsx";
 import Graph from "./Graph.jsx";
+import Beer from "./Beer.jsx";
 import PhotoPrompt, { seen, markSeen } from "./PhotoPrompt.jsx";
 import { useScrollLock } from "./lock.js";
 
@@ -25,6 +26,7 @@ const call = async (body) => {
 };
 const parseView = () => {
   if (location.hash === "#stats") return "stats";
+  if (location.hash === "#beer") return "beer";
   const n = parseInt(location.hash.slice(1), 10);
   return n >= 0 && n < 4 ? n : null;
 };
@@ -345,6 +347,8 @@ export default function App() {
     </>);
   }
 
+  if (view === "beer") return shell(<Beer names={s.names} me={me} authed={authed} lost={lost} onBack={() => go(null)} />);
+
   if (stats) return shell(<Stats s={s} me={me} onBack={() => go(null)} onOpen={(i) => go(i)} />);
 
   const total = s.days.reduce((t, d) => t + 3 * sum(d), 0);
@@ -355,7 +359,10 @@ export default function App() {
       <h1>100 DAY<br />CHALLENGE</h1>
       <p>Day N = <b>N push-ups</b>, <b>N sit-ups</b>, <b>N pull-ups</b>. No days off. 💪</p>
       <div className="total"><b>{fmt(total)}</b> reps crushed together</div>
-      <button className="statsbtn" onClick={() => go("stats")}>📊 Stats</button>
+      <div className="navbtns">
+        <button className="statsbtn" onClick={() => go("stats")}>📊 Stats</button>
+        <button className="statsbtn beerbtn" onClick={() => go("beer")}>🍺 Beer</button>
+      </div>
       <div className="meline">You're <b>{s.names[me]}</b> · <a onClick={signOut}>sign out</a></div>
     </div>
     {order.map((i, rank) => {
