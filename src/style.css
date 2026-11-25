@@ -161,6 +161,9 @@ button.day:disabled{cursor:default}.day.ro:active{transform:none}.day.ro:not(.on
 .beercard.mine{border-color:#ffd34d88;border-left-color:var(--pc)}
 .bname{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px}
 .bav{flex:none;width:40px;height:40px;border-radius:50%;border:3px solid var(--pc);box-sizing:border-box;object-fit:cover;background:var(--pc);color:#0f1226;font-style:normal;font-weight:800;display:flex;align-items:center;justify-content:center}
+.herocard .bname{flex-direction:column;gap:10px;text-align:center}
+.herocard .bav{width:152px;height:152px;border-width:5px;box-shadow:0 0 22px var(--pc),0 6px 18px #0008;font-size:64px}
+.herocard .bnums{justify-content:center}
 .bnums{display:flex;align-items:flex-end;gap:22px;margin:6px 0 4px}
 .bbig{display:flex;flex-direction:column}.bbig b{font-size:52px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums;color:var(--pc)}
 .bbig.small b{font-size:30px;color:var(--txt)}.bbig span{color:var(--mut);font-size:12px;letter-spacing:1px;text-transform:uppercase}

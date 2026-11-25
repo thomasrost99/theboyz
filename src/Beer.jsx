@@ -9,7 +9,7 @@ function Avatar({ src, name }) {
   const [bad, setBad] = useState(false);
   return bad
     ? <i className="bav">{name[0]}</i>
-    : <img className="bav" src={src} alt="" width="40" height="40" onError={() => setBad(true)} />;
+    : <img className="bav" src={src} alt="" width="512" height="512" onError={() => setBad(true)} />;
 }
 
 const PLAYERS = [0, 1, 3]; // Tommy, Hayden, Jack. Rob (2) has no counter.
@@ -106,7 +106,7 @@ export default function Beer({ names, me, authed, lost, onBack }) {
       {!d ? <p className="hint">Loading…</p> : PLAYERS.map((i) => {
         const mine = i === me;
         return (
-          <div key={i} className={"beercard" + (mine ? " mine" : "")} style={{ "--pc": COLORS[i] }}>
+          <div key={i} className={"beercard" + (mine ? " mine" : "") + (i === 3 ? " herocard" : "")} style={{ "--pc": COLORS[i] }}>
             <div className="bname">{i === 3 && <Avatar src="/avatars/jack.jpg" name={names[i]} />}{names[i]}{mine && <span className="you">YOU</span>}</div>
             <div className="bnums">
               <div className="bbig"><b key={bump[i] || 0} className="bpop">{d.total[i]}</b><span>total</span></div>
