@@ -3,6 +3,7 @@ import { burst } from "./confetti.js";
 import Sheet from "./Sheet.jsx";
 import Stats from "./Stats.jsx";
 import Graph from "./Graph.jsx";
+import Today from "./Today.jsx";
 import Beer from "./Beer.jsx";
 import PhotoPrompt, { seen, markSeen } from "./PhotoPrompt.jsx";
 import { useScrollLock } from "./lock.js";
@@ -24,6 +25,8 @@ const call = async (body) => {
   if (r.status === 401) { lost(); return null; }
   return r.json();
 };
+let chain = Promise.resolve(); // partial-progress taps go to the server one at a time
+const cheered = new Set();
 const parseView = () => {
   if (location.hash === "#stats") return "stats";
   if (location.hash === "#beer") return "beer";
@@ -309,6 +312,29 @@ export default function App() {
       call({ day, on }).then((d) => d && setS(d));
       if (!seen(me, day)) setPp(day); // suggest a photo, only for a day you just checked off yourself
     };
+    // Partial progress. Taps are sent one at a time so quick taps can't land out of order; the screen updates at once.
+    const queue = (body) => {
+      chain = chain.then(() => call(body)).catch(() => null).then((nd) => {
+        if (!nd) return;
+        if (nd.days[me][body.day - 1] && !cheered.has(me + ":" + body.day) && !s.days[me][body.day - 1]) {
+          cheered.add(me + ":" + body.day);
+          burst(window.innerWidth / 2, window.innerHeight / 2, true);
+          navigator.vibrate?.([30, 40, 60]);
+          const hit = MILES.find((m) => m[0] === nd.days[me].filter(Boolean).length);
+          setToast(hit ? `${hit[2]} ${hit[1]}! ${hit[0]} days done` : `Day ${body.day} done! 🎉`);
+          if (!seen(me, body.day)) setPp(body.day);
+        }
+        setS(nd);
+      });
+    };
+    const addRep = (day, ex, n) => {
+      const cur = s.sess?.[who]?.[day] || { push: 0, sit: 0, pull: 0 };
+      const nx = { ...cur, [ex]: cur[ex] + n, last: [ex, n] };
+      setS({ ...s, sess: s.sess.map((o, k) => (k === who ? { ...o, [day]: nx } : o)) });
+      navigator.vibrate?.(10);
+      queue({ action: "rep", day, ex, n });
+    };
+    const undoRep = (day) => queue({ action: "undo", day });
     const uncheck = (day) => {
       setS({ ...s, days: s.days.map((a, k) => (k === who ? a.map((v, j) => (j === day - 1 ? false : v)) : a)) });
       call({ day, on: false }).then((d) => d && setS(d));
@@ -329,7 +355,7 @@ export default function App() {
         <div><b>{fmt(r)}</b><span>pull-ups</span></div>
       </div>
       {next > 0
-        ? <div className="next"><small>Up next</small><b>Day {next}</b><span>{next} push-ups · {next} sit-ups · {next} pull-ups</span></div>
+        ? <Today key={next} day={next} prog={s.sess?.[who]?.[next]} mine={mine} onAdd={(ex, n) => addRep(next, ex, n)} onUndo={() => undoRep(next)} />
         : <div className="next win"><b>👑 100 DAYS. LEGEND.</b></div>}
       <Graph days={d} />
       <div className="grid">
@@ -340,7 +366,7 @@ export default function App() {
           </button>
         ))}
       </div>
-      <p className="hint">{mine ? "Tap a day when you've done all three. Tap a finished day to log exact reps or add a photo." : `View only. You can only check off your own days (you're ${s.names[me]}). Tap a finished day to see details.`}</p>
+      <p className="hint">{mine ? "Log reps as you go in the card above (it checks the day off by itself at the target), or tap a day when you've done all three. Tap a finished day to log exact reps or add a photo." : `View only. You can only check off your own days (you're ${s.names[me]}). Tap a finished day to see details.`}</p>
       {sheet && <Sheet key={sheet} name={s.names[who]} who={who} day={sheet} log={s.logs?.[who]?.[sheet]} mine={mine} authed={authed}
         onChanged={refresh} onUncheck={() => uncheck(sheet)} />}
       {pp && mine && <PhotoPrompt key={pp} me={me} day={pp} authed={authed} onChanged={refresh} onClose={closePp} />}
@@ -374,6 +400,8 @@ export default function App() {
             <div className="who">
               <span className="name">{c > 0 ? ["👑 ", "🥈 ", "🥉 "][s.days.filter((d) => count(d) > c).length] || "" : ""}{s.names[i]}{i === me && <span className="you">YOU</span>}</span>
               <span className="mini">{t ? `${t[2]} ${t[1]} · ` : ""}{fmt(3 * sum(s.days[i]))} reps</span>
+              {(() => { const nx = s.days[i].indexOf(false) + 1, p = nx && s.sess?.[i]?.[nx];
+                return p && (p.push || p.sit || p.pull) ? <span className="mini prog">Day {nx} so far: {p.push}/{p.sit}/{p.pull} of {nx}</span> : null; })()}
             </div>
             <span className="num">{c}<small>/100</small></span>
           </div>
