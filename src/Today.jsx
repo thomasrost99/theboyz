@@ -4,12 +4,20 @@ const EXS = [["push", "Push-ups"], ["sit", "Sit-ups"], ["pull", "Pull-ups"]];
 
 // "Up next" card with partial progress: reps logged in sessions so far against the day's target, per exercise.
 // The day checks itself off on the server when all three reach the target. `mine` shows the buttons; otherwise view only.
-export default function Today({ day, prog, mine, onAdd, onUndo }) {
+const key = (me, ex) => `lastrep:${me}:${ex}`;
+const getLast = (me, ex) => { try { return parseInt(localStorage.getItem(key(me, ex)), 10) || 0; } catch { return 0; } };
+
+export default function Today({ day, me, prog, mine, onAdd, onUndo }) {
   const p = prog || { push: 0, sit: 0, pull: 0, last: null };
   const [open, setOpen] = useState(null); // exercise whose custom-number box is open
   const [val, setVal] = useState("");
   const send = (ex, n) => { if (n > 0) onAdd(ex, n); };
-  const custom = (ex) => { send(ex, parseInt(val, 10) || 0); setOpen(null); setVal(""); };
+  const [last, setLast] = useState(() => Object.fromEntries(EXS.map(([ex]) => [ex, getLast(me, ex)]))); // last custom number per exercise, remembered on this device
+  const custom = (ex) => {
+    const n = parseInt(val, 10) || 0;
+    if (n > 0) { try { localStorage.setItem(key(me, ex), n); } catch {} setLast((l) => ({ ...l, [ex]: n })); }
+    send(ex, n); setOpen(null); setVal("");
+  };
   const name = (ex) => EXS.find((e) => e[0] === ex)?.[1].toLowerCase();
   return (
     <div className="next today">
@@ -31,9 +39,8 @@ export default function Today({ day, prog, mine, onAdd, onUndo }) {
               </form>
             ) : (
               <div className="exrow">
-                <button className="add" onClick={() => send(ex, 5)}>+5</button>
-                <button className="add" onClick={() => send(ex, 10)}>+10</button>
                 <button className="add" onClick={() => { setOpen(ex); setVal(""); }}>+ #</button>
+                {last[ex] > 0 && <button className="add rep" onClick={() => send(ex, last[ex])}>+{last[ex]}</button>}
                 {left > 0 && <button className="add fin" onClick={() => send(ex, left)}>Done ({left})</button>}
               </div>
             ))}

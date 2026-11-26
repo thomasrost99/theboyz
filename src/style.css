@@ -209,3 +209,4 @@ button.add.fin{flex:1.6;font-size:15px;background:#35d07f26;border-color:#35d07f
 button.add.go{flex:0 0 76px;background:linear-gradient(135deg,var(--a),var(--b))}button.add:disabled{opacity:.4}
 button.undo{margin-top:12px;min-height:44px;border-radius:12px;font-size:15px;background:#ffffff12;color:var(--mut)}
 .mini.prog{color:var(--b)}
+button.add.rep{background:linear-gradient(135deg,#7c5cff66,#22d3ee55)}

@@ -355,7 +355,7 @@ export default function App() {
         <div><b>{fmt(r)}</b><span>pull-ups</span></div>
       </div>
       {next > 0
-        ? <Today key={next} day={next} prog={s.sess?.[who]?.[next]} mine={mine} onAdd={(ex, n) => addRep(next, ex, n)} onUndo={() => undoRep(next)} />
+        ? <Today key={next} day={next} me={me} prog={s.sess?.[who]?.[next]} mine={mine} onAdd={(ex, n) => addRep(next, ex, n)} onUndo={() => undoRep(next)} />
         : <div className="next win"><b>👑 100 DAYS. LEGEND.</b></div>}
       <Graph days={d} />
       <div className="grid">
