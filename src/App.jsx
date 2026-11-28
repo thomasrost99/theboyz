@@ -7,6 +7,7 @@ import Today from "./Today.jsx";
 import Beer from "./Beer.jsx";
 import PhotoPrompt, { seen, markSeen } from "./PhotoPrompt.jsx";
 import { useScrollLock } from "./lock.js";
+import { holdPhoto, getHeld, dropHeld, heldDays } from "./held.js";
 
 const MILES = [
   [10, "Warm-up", "🔥"], [25, "Quarter", "⚡"], [50, "Halfway", "🚀"], [75, "Beast mode", "🦍"], [100, "Legend", "👑"],
@@ -260,6 +261,21 @@ export default function App() {
     return () => window.removeEventListener("popstate", f);
   }, []);
   const closePp = () => { setPp(null); };
+  // Photos held privately on this device until the day is finished: { day: Blob } for the signed-in person.
+  const [held, setHeld] = useState({});
+  const heldRef = useRef({}); heldRef.current = held;
+  const posting = useRef(new Map()); // day -> time of the last failed try, so a failure waits 30 s
+  useEffect(() => {
+    setHeld({});
+    if (me === null) return;
+    let live = true;
+    heldDays(me).then((ds) => Promise.all(ds.map(async (d) => [d, await getHeld(me, d)]))).then((es) => {
+      if (live) setHeld((h) => ({ ...Object.fromEntries(es.filter((e) => e[1])), ...h }));
+    });
+    return () => { live = false; };
+  }, [me]);
+  const holdIt = async (day, blob) => { await holdPhoto(me, day, blob); setHeld((h) => ({ ...h, [day]: blob })); };
+  const removeHeld = async (day) => { await dropHeld(me, day); setHeld((h) => { const n = { ...h }; delete n[day]; return n; }); };
   const go = (v) => {
     if (pp) { markSeen(me, pp); setPp(null); }
     if (v === null) { if (view !== null) history.back(); return; }
@@ -275,6 +291,19 @@ export default function App() {
   useEffect(() => { // drop the card if that day got unchecked or you opened its sheet
     if (pp && s && me !== null && (!s.days[me][pp - 1] || sheet)) { markSeen(me, pp); setPp(null); }
   }, [pp, s, me, sheet]);
+  useEffect(() => { // a held photo posts as the day's photo once that day is checked off (by target or by hand)
+    if (!s || me === null) return;
+    for (const [k, blob] of Object.entries(held)) {
+      const day = +k;
+      if (!s.days[me]?.[day - 1] || posting.current.has(day)) continue;
+      if (s.logs?.[me]?.[day]?.photo) { removeHeld(day); continue; } // already has a photo (e.g. from another phone): don't overwrite
+      posting.current.set(day, Date.now());
+      fetch("/photo?day=" + day, { method: "POST", headers: authed({}).headers, body: blob }).then(async (r) => {
+        if (r.ok || r.status === 413 || r.status === 415) { await removeHeld(day); posting.current.delete(day); if (r.ok) { setToast(`📸 Day ${day} photo posted`); call().then((d) => d && setS(d)); } else setToast("Couldn't post the held photo, add another"); }
+        else setTimeout(() => posting.current.delete(day), 30000);
+      }).catch(() => setTimeout(() => posting.current.delete(day), 30000));
+    }
+  }, [s, held, me]);
   const refresh = () => call().then((d) => d && setS(d));
   useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3200); return () => clearTimeout(t); } }, [toast]);
 
@@ -310,7 +339,7 @@ export default function App() {
       }
       setS({ ...s, days: s.days.map((a, k) => (k === who ? a.map((v, j) => (j === day - 1 ? on : v)) : a)) });
       call({ day, on }).then((d) => d && setS(d));
-      if (!seen(me, day)) setPp(day); // suggest a photo, only for a day you just checked off yourself
+      if (!seen(me, day) && !heldRef.current[day]) setPp(day); // suggest a photo, only for a day you just checked off yourself
     };
     // Partial progress. Taps are sent one at a time so quick taps can't land out of order; the screen updates at once.
     const queue = (body) => {
@@ -322,7 +351,7 @@ export default function App() {
           navigator.vibrate?.([30, 40, 60]);
           const hit = MILES.find((m) => m[0] === nd.days[me].filter(Boolean).length);
           setToast(hit ? `${hit[2]} ${hit[1]}! ${hit[0]} days done` : `Day ${body.day} done! 🎉`);
-          if (!seen(me, body.day)) setPp(body.day);
+          if (!seen(me, body.day) && !heldRef.current[body.day]) setPp(body.day);
         }
         setS(nd);
       });
@@ -355,7 +384,7 @@ export default function App() {
         <div><b>{fmt(r)}</b><span>pull-ups</span></div>
       </div>
       {next > 0
-        ? <Today key={next} day={next} me={me} prog={s.sess?.[who]?.[next]} mine={mine} onAdd={(ex, n) => addRep(next, ex, n)} onUndo={() => undoRep(next)} />
+        ? <Today key={next} day={next} me={me} prog={s.sess?.[who]?.[next]} mine={mine} held={held[next] || null} onHold={(b) => holdIt(next, b)} onRemove={() => removeHeld(next)} onAdd={(ex, n) => addRep(next, ex, n)} onUndo={() => undoRep(next)} />
         : <div className="next win"><b>👑 100 DAYS. LEGEND.</b></div>}
       <Graph days={d} />
       <div className="grid">

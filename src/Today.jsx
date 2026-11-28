@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { compress } from "./img.js";
 
 const EXS = [["push", "Push-ups"], ["sit", "Sit-ups"], ["pull", "Pull-ups"]];
 
@@ -7,7 +8,41 @@ const EXS = [["push", "Push-ups"], ["sit", "Sit-ups"], ["pull", "Pull-ups"]];
 const key = (me, ex) => `lastrep:${me}:${ex}`;
 const getLast = (me, ex) => { try { return parseInt(localStorage.getItem(key(me, ex)), 10) || 0; } catch { return 0; } };
 
-export default function Today({ day, me, prog, mine, onAdd, onUndo }) {
+// Photo held privately until the day is finished (see held.js); `held` is the shrunk JPEG blob or null.
+function HeldPhoto({ day, held, onHold, onRemove }) {
+  const [url, setUrl] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => { if (!held) { setUrl(null); return; } const u = URL.createObjectURL(held); setUrl(u); return () => URL.revokeObjectURL(u); }, [held]);
+  const pick = async (e) => {
+    const input = e.target, f = input.files?.[0];
+    if (!f) return;
+    setErr(""); setBusy(true);
+    try { await onHold(await compress(f)); } catch (x) { setErr(x.message || "That photo didn't work, try another"); }
+    setBusy(false); input.value = "";
+  };
+  return (
+    <div className="held">
+      {held && url ? (<>
+        <img className="hthumb" src={url} alt="Held photo" />
+        <div className="htxt"><b>Photo ready, posts when you finish</b>
+          <div className="hbtns">
+            <label className={"hb" + (busy ? " off" : "")}>Replace<input type="file" accept="image/*" onChange={pick} disabled={busy} hidden /></label>
+            <button className="hb" onClick={onRemove} disabled={busy}>Remove</button>
+          </div></div>
+      </>) : (
+        <label className={"filebtn hadd" + (busy ? " off" : "")}>
+          {busy ? "Shrinking photo…" : "📷 Add a photo for Day " + day}
+          <input type="file" accept="image/*" onChange={pick} disabled={busy} hidden />
+        </label>
+      )}
+      {!held && !busy && <p className="hhint">Only on this phone until you finish the day. It doesn't post yet.</p>}
+      {err && <p className="hhint bad">{err}</p>}
+    </div>
+  );
+}
+
+export default function Today({ day, me, prog, mine, held, onHold, onRemove, onAdd, onUndo }) {
   const p = prog || { push: 0, sit: 0, pull: 0, last: null };
   const [open, setOpen] = useState(null); // exercise whose custom-number box is open
   const [val, setVal] = useState("");
@@ -47,6 +82,7 @@ export default function Today({ day, me, prog, mine, onAdd, onUndo }) {
           </div>
         );
       })}
+      {mine && <HeldPhoto day={day} held={held} onHold={onHold} onRemove={onRemove} />}
       {mine && p.last && (
         <button className="undo" onClick={onUndo}>↶ Undo +{p.last[1]} {name(p.last[0])}</button>
       )}
